@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using CitizenFX.Core;
@@ -8,20 +8,20 @@ using FivePD.API.Utils;
 
 namespace Code1000
 {
-    [CalloutProperties("Code 1000 (Plane Crash)", "GGGDunlix", "0.0.1")]
+    [CalloutProperties("Code 1000 (Plane Crash)", "GGGDunlix", "0.1.18")]
     public class Code1000 : Callout
     {
-        Ped suspect;
+        Ped pilot;
         Vehicle plane;
 
         public Code1000()
         {
             Random random = new Random();
-            InitInfo(Vector3Extension.ApplyOffset(Game.PlayerPed.Position, CitizenFX.Core.Vector3.));
+            InitInfo(World.GetNextPositionOnStreet(Game.PlayerPed.GetOffsetPosition(Vector3Extension.Around(Game.PlayerPed.Position, 200f))));
             ShortName = "Code 1000 (Plane Crash)";
-            CalloutDescription = "A plane is falling and about to land. Go to it's location and search for injuries, criminals, etc. Respond in Code 3 High.";
+            CalloutDescription = "A plane has crashed. Go to it's location and search for injuries, criminals, etc. Respond in Code 3 High.";
             ResponseCode = 3;
-            StartDistance = 1100f;
+            StartDistance = 150f;
         }
 
         public async override Task OnAccept()
@@ -31,23 +31,37 @@ namespace Code1000
             var carlist = new[]
             {
                 VehicleHash.CargoPlane,
-                VehicleHash.Cuban800
+                VehicleHash.Cuban800,
+                VehicleHash.Luxor,
+                VehicleHash.Luxor2,
+                VehicleHash.Dodo,
+                VehicleHash.Duster,
+                VehicleHash.Titan
+
             };
             plane = await SpawnVehicle(carlist[RandomUtils.Random.Next(carlist.Length)], Location);
-            suspect = await SpawnPed(RandomUtils.GetRandomPed(), Location);
-            suspect.AlwaysKeepTask = true;
-            suspect.BlockPermanentEvents = true;
+            pilot = await SpawnPed(RandomUtils.GetRandomPed(), Location);
+            pilot.AlwaysKeepTask = true;
+            pilot.BlockPermanentEvents = true;
             plane.AttachBlip();
-            
+            CitizenFX.Core.Native.API.ForceAmbientSiren(true);
+
+
+
         }
 
         public override void OnStart(Ped player)
         {
             base.OnStart(player);
-            suspect.AttachBlip();
+            pilot.AttachBlip();
             Utilities.ExcludeVehicleFromTrafficStop(plane.NetworkId, true);
-            suspect.SetIntoVehicle(plane, VehicleSeat.Driver);
-            Utilities.RequestBackup(Utilities.Backups.Code99);
+            World.AddExplosion(plane.Position, ExplosionType.PlaneRocket, 50f, 15, pilot, true, false);
+            CitizenFX.Core.Native.API.ExplodeVehicle(plane.NetworkId, true, false);
+            CitizenFX.Core.Native.API.ForceAmbientSiren(false);
+            GameplayCamera.Shake(CameraShake.LargeExplosion, 0);
+
+
+
         }
     }
 
